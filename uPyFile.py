@@ -23,12 +23,12 @@ def run(
     if operation == 'read':
         #send command to read the file, then remove the buffering stuff from around it
         pass
-        elif operation == 'push':
+    elif operation == 'push':
         #open, read, and close the file on the pc, then send the commands to open, write and close a file
         pass
-        elif operation == 'pull':
-            #send the commands to open, read, and cloase the file, then open, write, and close a file on the pc
-            pass
+    elif operation == 'pull':
+        #send the commands to open, read, and cloase the file, then open, write, and close a file on the pc
+        pass
 
 if __name__ == '__main__':
     #get operation and parameters from sys.argv
