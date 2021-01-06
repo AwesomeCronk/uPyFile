@@ -1,5 +1,7 @@
 import sys, serial, time
 
+_version = '1.0.0'
+
 class fileHandler():
     def __init__(self, comPort, baud = 115200, timeout = 2, stopBits = 1):
         self.serialPort = serial.Serial(port = comPort,
@@ -61,3 +63,5 @@ if __name__ == '__main__':
         handler.push(sys.argv[3], sys.argv[4])
     elif action == 'pull':
         handler.pull(sys.argv[3], sys.argv[4])
+    elif action == 'version':
+        print('Using uPyFile version {}'.format(_version))
