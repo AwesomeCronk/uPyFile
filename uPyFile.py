@@ -4,7 +4,7 @@ _version = '1.1.0'
 
 class fileHandler():
     def __init__(self, comPort, baud = 115200, timeout = 2, stopBits = 1):
-        self.enableDebugging = False
+        self.enableDebugging = True
 
         self.serialPort = serial.Serial(port = comPort,
                                         baudrate = baud,
@@ -35,9 +35,16 @@ class fileHandler():
         while(devOutput != b'>>> '):
             if self.serialPort.in_waiting > 0:
                 devOutput = self.serialPort.readline()
-                self.debugDevice(devOutput)
+                #self.debugDevice(devOutput)
     def read(self, fileNameDev):
-        print('reading files is not yet supported')
+        cmdText = "fileDev = open('{}', 'rb')\r\nprint(int.from_bytes(fileDev.read(), 'big'))\r\nfileDev.close()".format(fileNameDev)
+        dataToSend = bytes(cmdText, 'UTF-8')
+        self.serialPort.write(dataToSend)
+        #self.debugComputer(dataToSend)
+        dataReceived = self.serialPort.read(1024)
+        #self.debugDevice(dataReceived)
+        print(dataReceived.decode('UTF-8', errors = 'ignore').split('\r\n')[-2])
+
 
     def push(self, fileNameDev, fileNamePC):
         with open(fileNamePC, 'rb') as filePC:
@@ -46,7 +53,7 @@ class fileHandler():
         cmdText = "fileDev = open('{}', 'wb')\r\nfileDev.write({})\r\nfileDev.close()\r\n".format(fileNameDev, fileData)
         dataToSend = bytes(cmdText, 'UTF-8')
         self.serialPort.write(dataToSend)
-        self.debugComputer(dataToSend)
+        #self.debugComputer(dataToSend)
         self.waitForREPL()
         self.close()
 
@@ -58,10 +65,10 @@ class fileHandler():
         cmdText = "import os\r\nos.listdir('{}')\r\n".format(dirDev)
         dataToSend = bytes(cmdText, 'UTF-8')
         self.serialPort.write(dataToSend)
-        self.debugComputer(dataToSend)
-        dataRecieved = self.serialPort.read(1024)
-        self.debugDevice(dataRecieved)
-        for i in dataRecieved.decode('UTF-8', errors = 'ignore').split('\r\n')[-2][2:-2].split("', '"):
+        #self.debugComputer(dataToSend)
+        dataReceived = self.serialPort.read(1024)
+        #self.debugDevice(dataReceived)
+        for i in dataReceived.decode('UTF-8', errors = 'ignore').split('\r\n')[-2][2:-2].split("', '"):
             print(i)
         self.close()
 
