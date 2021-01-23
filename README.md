@@ -14,4 +14,8 @@ python uPyFile.py COM3 read boot.py
 
 python uPyFile.py COM12 pull main.py
 
-Hopefully, I will be able to compile the script into a .exe program or set up the project as a python package installable with PIP.
+Currently, the program is pretty functional. It has a working installer (just download or clone this project and run the installer) and currently supports the following operations:
+
+* Reading files
+* Pushing files from the PC to the device
+* Listing directory contents

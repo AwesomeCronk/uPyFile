@@ -1,6 +1,6 @@
 import sys, serial, time
 
-_version = '1.1.0'
+_version = '1.2.1'
 
 class fileHandler():
     def __init__(self, comPort, baud = 115200, timeout = 2, stopBits = 1):
@@ -12,8 +12,8 @@ class fileHandler():
                                         timeout = timeout,
                                         stopbits = stopBits)
 
-        self.serialPort.write(b'\x03')           #send the stop code
-        self.waitForREPL()
+        #self.serialPort.write(b'\x03')           #send the stop code
+        #self.waitForREPL()
 
     def __enter__(self):
         pass
@@ -36,19 +36,25 @@ class fileHandler():
             if self.serialPort.in_waiting > 0:
                 devOutput = self.serialPort.readline()
                 #self.debugDevice(devOutput)
+
     def read(self, fileNameDev):
-        cmdText = "fileDev = open('{}', 'rb')\r\nprint(int.from_bytes(fileDev.read(), 'big'))\r\nfileDev.close()".format(fileNameDev)
+        cmdText = "fileDev = open('{}', 'rb')\r\nfor i in fileDev.read():\r\nprint(hex(i), end = ' ')\r\n\x7f\r\nfileDev.close()".format(fileNameDev)
         dataToSend = bytes(cmdText, 'UTF-8')
         self.serialPort.write(dataToSend)
         #self.debugComputer(dataToSend)
+        deviceOutput = b''
         dataReceived = self.serialPort.read(1024)
-        #self.debugDevice(dataReceived)
-        print(dataReceived.decode('UTF-8', errors = 'ignore').split('\r\n')[-2])
+        while dataReceived:
+            deviceOutput += dataReceived
+            dataReceived = self.serialPort.read(1024)
+        #self.debugDevice(deviceOutput)
+        for i in deviceOutput.decode('UTF-8', errors = 'ignore').split('\r\n')[-1][0:-20].split(' '):       #Get a list of bytes in '0xab' format
+            print(int(i, base = 16).to_bytes(1, 'little').decode('UTF-8', errors = 'ignore'), end = '')     #convert to raw data and print
 
 
     def push(self, fileNameDev, fileNamePC):
         with open(fileNamePC, 'rb') as filePC:
-            fileData = self.padData(filePC.read())
+            fileData = str(filePC.read())
             #print('fileData: {}'.format(fileData))
         cmdText = "fileDev = open('{}', 'wb')\r\nfileDev.write({})\r\nfileDev.close()\r\n".format(fileNameDev, fileData)
         dataToSend = bytes(cmdText, 'UTF-8')
@@ -71,12 +77,6 @@ class fileHandler():
         for i in dataReceived.decode('UTF-8', errors = 'ignore').split('\r\n')[-2][2:-2].split("', '"):
             print(i)
         self.close()
-
-    def padData(self, dataIn):
-        return str(dataIn)
-
-    def unpadData(self, dataIn):
-        pass
 
     def close(self):
         self.serialPort.close()
