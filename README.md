@@ -8,7 +8,7 @@ Usage:
 
 `python uPyFile.py port push pcFileName deviceFileName  -  copies a file from your PC to the device.`
 
-Add `-v` to the end of any command to get a printout of what uPyFile is doing.
+Add `-v` or `--verbose` to the end of any command to get a printout of what uPyFile is doing.
 
 Examples:
 
@@ -20,6 +20,7 @@ Currently, the program is pretty functional. It has a working installer (just do
 
 * Reading files
 * Pushing files from the PC to the device
+* Pulling files from the device to the PC
 * Listing directory contents
 
 Please note that if it says something about an index error when you run it, you are probably missing a command line argument.
