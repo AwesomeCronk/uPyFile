@@ -1,6 +1,6 @@
 import sys, serial, time
 
-_version = '1.2.1'
+_version = '1.3.0'
 
 class fileHandler():
     def __init__(self, comPort, baud = 115200, timeout = 2, stopBits = 1):
@@ -12,8 +12,8 @@ class fileHandler():
                                         timeout = timeout,
                                         stopbits = stopBits)
 
-        #self.serialPort.write(b'\x03')           #send the stop code
-        #self.waitForREPL()
+        self.serialPort.write(b'\x03')           #send the stop code
+        self.waitForREPL()
 
     def __enter__(self):
         pass
@@ -37,7 +37,7 @@ class fileHandler():
                 devOutput = self.serialPort.readline()
                 #self.debugDevice(devOutput)
 
-    def read(self, fileNameDev):
+    def read(self, fileNameDev, _print = True):
         cmdText = "fileDev = open('{}', 'rb')\r\nfor i in fileDev.read():\r\nprint(hex(i), end = ' ')\r\n\x7f\r\nfileDev.close()".format(fileNameDev)
         dataToSend = bytes(cmdText, 'UTF-8')
         self.serialPort.write(dataToSend)
@@ -48,9 +48,13 @@ class fileHandler():
             deviceOutput += dataReceived
             dataReceived = self.serialPort.read(1024)
         #self.debugDevice(deviceOutput)
+        data = b''
         for i in deviceOutput.decode('UTF-8', errors = 'ignore').split('\r\n')[-1][0:-20].split(' '):       #Get a list of bytes in '0xab' format
-            print(int(i, base = 16).to_bytes(1, 'little').decode('UTF-8', errors = 'ignore'), end = '')     #convert to raw data and print
-
+            data += int(i, base = 16).to_bytes(1, 'little')     #convert to raw data and add to data variable
+        if _print:
+            print(data.decode('UTF-8', errors = 'ignore'))      #print text version
+        else:
+            return data
 
     def push(self, fileNameDev, fileNamePC):
         with open(fileNamePC, 'rb') as filePC:
@@ -64,7 +68,9 @@ class fileHandler():
         self.close()
 
     def pull(self, fileNameDev, fileNamePC):
-        print('pulling files is not yet supported')
+        data = self.read(fileNameDev, _print = False)
+        with open(fileNamePC, 'wb') as filePC:
+            filePC.write(data)
 
     def list(self, dirDev):
         print('Listing directory: {}'.format(dirDev))
