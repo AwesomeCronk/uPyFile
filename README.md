@@ -8,6 +8,8 @@ Usage:
 
 `python uPyFile.py port push pcFileName deviceFileName  -  copies a file from your PC to the device.`
 
+Add `-v` to the end of any command to get a printout of what uPyFile is doing.
+
 Examples:
 
 `python uPyFile.py COM3 read boot.py`
