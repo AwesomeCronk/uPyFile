@@ -12,16 +12,18 @@ class fileHandler():
                                         bytesize = 8,
                                         timeout = timeout,
                                         stopbits = stopBits)
-        self.vbPrint('Done\nRebooting device...', end = ' ')
-        self.serialPort.write(b'\x03')           #send the stop code
-        self.waitForREPL()
-        self.vbPrint('Done.')
-
+    
     def __enter__(self):
         return self
 
     def __exit__(self, *args):
         self.close()
+
+    def initDevice(self):
+        self.vbPrint('Done\nRebooting device...', end = ' ')
+        self.serialPort.write(b'\x03')           #send the stop code
+        self.waitForREPL()
+        self.vbPrint('Done.')
 
     def debugComputer(self, debugData):
         if self.enableDebugging:
@@ -123,7 +125,9 @@ if __name__ == '__main__':
     with fileHandler(sys.argv[1], verbose = verbose) as handler:
         action = sys.argv[2]
         #print(action)
-        if action == 'read':
+        if action == 'init':
+            handler.initDevice()
+        elif action == 'read':
             handler.read(sys.argv[3])
         elif action == 'push':
             handler.push(sys.argv[3], sys.argv[4])
