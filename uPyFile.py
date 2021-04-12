@@ -3,8 +3,8 @@ import sys, serial, time
 _version = '1.4.0'
 
 class fileHandler():
-    def __init__(self, comPort, baud = 115200, timeout = 2, stopBits = 1, verbose = False):
-        self.enableDebugging = True
+    def __init__(self, comPort, baud = 115200, timeout = 2, stopBits = 1, verbose = False, debug = False):
+        self.debug = debug
         self.verbose = verbose
         self.vbPrint('Opening serial port...', end = ' ')
         self.serialPort = serial.Serial(port = comPort,
@@ -26,11 +26,11 @@ class fileHandler():
         self.vbPrint('Done.')
 
     def debugComputer(self, debugData):
-        if self.enableDebugging:
+        if self.debug:
             print('COMPUTER: {}'.format(debugData))
 
     def debugDevice(self, debugData):
-        if self.enableDebugging:
+        if self.debug:
             print('DEVICE: {}'.format(debugData))
 
     def vbPrint(self, text, end = '\n'):
@@ -42,14 +42,14 @@ class fileHandler():
         while(devOutput != b'>>> '):
             if self.serialPort.in_waiting > 0:
                 devOutput = self.serialPort.readline()
-                #self.debugDevice(devOutput)
+                self.debugDevice(devOutput)
 
     def read(self, fileNameDev, _print = True):
         self.vbPrint('Sending read command...', end = ' ')
         cmdText = "fileDev = open('{}', 'rb')\r\nfor i in fileDev.read():\r\nprint(hex(i), end = ' ')\r\n\x7f\r\nfileDev.close()".format(fileNameDev)
         dataToSend = bytes(cmdText, 'UTF-8')
         self.serialPort.write(dataToSend)
-        #self.debugComputer(dataToSend)
+        self.debugComputer(dataToSend)
 
         self.vbPrint('Done.\nReading response...')
         deviceOutput = b''
@@ -57,7 +57,7 @@ class fileHandler():
         while dataReceived:
             deviceOutput += dataReceived
             dataReceived = self.serialPort.read(1024)
-        #self.debugDevice(deviceOutput)
+        self.debugDevice(deviceOutput)
         self.vbPrint('Done.\nParsing response...', end = ' ')
         data = b''
         for i in deviceOutput.decode('UTF-8', errors = 'ignore').split('\r\n')[-1][0:-20].split(' '):       #Get a list of bytes in '0xab' format
@@ -78,9 +78,9 @@ class fileHandler():
         cmdText = "fileDev = open('{}', 'wb')\r\nfileDev.write({})\r\nfileDev.close()\r\n".format(fileNameDev, fileData)
         dataToSend = bytes(cmdText, 'UTF-8')
         self.serialPort.write(dataToSend)
-        #self.debugComputer(dataToSend)
+        self.debugComputer(dataToSend)
         self.vbPrint('Done.')
-        #self.waitForREPL()
+        self.waitForREPL()
         #self.close()
 
     def pull(self, fileNameDev, fileNamePC):
@@ -95,10 +95,10 @@ class fileHandler():
         cmdText = "import os\r\nos.listdir('{}')\r\n".format(dirDev)
         dataToSend = bytes(cmdText, 'UTF-8')
         self.serialPort.write(dataToSend)
-        #self.debugComputer(dataToSend)
+        self.debugComputer(dataToSend)
         self.vbPrint('Done.\nReading response...', end = ' ')
         dataReceived = self.serialPort.read(1024)
-        #self.debugDevice(dataReceived)
+        self.debugDevice(dataReceived)
         self.vbPrint('Done.\nParsing response...')
         listing = ''
         for i in dataReceived.decode('UTF-8', errors = 'ignore').split('\r\n')[-2][2:-2].split("', '"):
@@ -110,8 +110,9 @@ class fileHandler():
         #self.close()
 
     def close(self):
-        self.vbPrint('Closing serial port.')
+        self.vbPrint('Closing serial port...', end = ' ')
         self.serialPort.close()
+        self.vbPrint('Done')
 
 if __name__ == '__main__':
     #get operation and parameters from sys.argv
@@ -122,7 +123,12 @@ if __name__ == '__main__':
     else:
         verbose = False
 
-    with fileHandler(sys.argv[1], verbose = verbose) as handler:
+    if '-d' in sys.argv or '--debug' in sys.argv:
+        debug = True
+    else:
+        debug = False
+
+    with fileHandler(sys.argv[1], verbose = verbose, debug = debug) as handler:
         action = sys.argv[2]
         #print(action)
         if action == 'init':
