@@ -1,11 +1,14 @@
 import os, shutil, sys
 
-installDir = os.path.expandvars('%LOCALAPPDATA%\\Programs\\uPyFile')
+if sys.platform == 'win32':
+    installDir = os.path.expandvars('%LOCALAPPDATA%\\Programs\\uPyFile')
+else:
+    installDir = '/usr/local/bin/uPyFile'
 downloadDir = os.path.dirname(os.path.realpath(__file__))
 configFiles = []
-installFiles = ['LICENSE', 'README.md', 'uPyFile.exe']
+installFiles = ['LICENSE', 'README.md', 'uPyFile.exe' if sys.platform == 'win32' else 'uPyFile']
 
-_version = '1.0.0'
+_version = '1.1.0'
 
 def version():
     print('Using uPyFile installer version {}.'.format(_version))
