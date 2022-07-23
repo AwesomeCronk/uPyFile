@@ -1,30 +1,21 @@
-import sys, serial, time
+import serial, argparse
 
-_version = '1.4.0'
+_version = '2.0.0'
 
 class fileHandler():
-    def __init__(self, comPort, baud = 115200, timeout = 2, stopBits = 1, verbose = False, debug = False):
-        self.debug = debug
-        self.verbose = verbose
-        self.vbPrint('Opening serial port...', end = ' ')
-        self.serialPort = serial.Serial(port = comPort,
-                                        baudrate = baud,
-                                        bytesize = 8,
-                                        timeout = timeout,
-                                        stopbits = stopBits)
-    
+    def __init__(self):
+        self.debug = True
+        self.verbose = True
+        self.portOpen = False
+
     def __enter__(self):
         return self
 
     def __exit__(self, *args):
         self.close()
 
-    def initDevice(self):
-        self.vbPrint('Done\nRebooting device...', end = ' ')
-        self.serialPort.write(b'\x03')           #send the stop code
-        self.waitForREPL()
-        self.vbPrint('Done.')
 
+    # Debug methods (to be replaced with logging calls)
     def debugComputer(self, debugData):
         if self.debug:
             print('COMPUTER: {}'.format(debugData))
@@ -37,6 +28,17 @@ class fileHandler():
         if self.verbose:
             print(text, end = end)
 
+
+    # Serial port management
+    def open(self, port, baud = 115200, timeout = 2, stopBits = 1):
+        self.vbPrint('Opening serial port...', end = ' ')
+        self.serialPort = serial.Serial(port = port,
+                                        baudrate = baud,
+                                        bytesize = 8,
+                                        timeout = timeout,
+                                        stopbits = stopBits)
+        self.portOpen = True
+
     def waitForREPL(self):
         devOutput = b''                     #wait for the REPL prompt
         while(devOutput != b'>>> '):
@@ -44,9 +46,25 @@ class fileHandler():
                 devOutput = self.serialPort.readline()
                 self.debugDevice(devOutput)
 
-    def read(self, fileNameDev, _print = True):
+    def close(self):
+        if self.portOpen:
+            self.vbPrint('Closing serial port...', end = ' ')
+            self.serialPort.close()
+            self.vbPrint('Done')
+        else:
+            self.vbPrint('Serial port already closed')
+
+
+    # Command implementation
+    def init(self, args):
+        self.vbPrint('Done\nRebooting device...', end = ' ')
+        self.serialPort.write(b'\x03')           #send the stop code
+        self.waitForREPL()
+        self.vbPrint('Done.')
+
+    def read(self, args, _print = True):
         self.vbPrint('Sending read command...', end = ' ')
-        cmdText = "fileDev = open('{}', 'rb')\r\nfor i in fileDev.read():\r\nprint(hex(i), end = ' ')\r\n\x7f\r\nfileDev.close()".format(fileNameDev)
+        cmdText = "fileDev = open('{}', 'rb')\r\nfor i in fileDev.read():\r\nprint(hex(i), end = ' ')\r\n\x7f\r\nfileDev.close()".format(args.file)
         dataToSend = bytes(cmdText, 'UTF-8')
         self.serialPort.write(dataToSend)
         self.debugComputer(dataToSend)
@@ -64,35 +82,34 @@ class fileHandler():
             data += int(i, base = 16).to_bytes(1, 'little')     #convert to raw data and add to data variable
         self.vbPrint('Done.')
         if _print:
-            print('Contents of {} are:'.format(fileNameDev))
+            print('Contents of {} are:'.format(args.file))
             print(data.decode('UTF-8', errors = 'ignore'))      #print text version
         else:
             return data
 
-    def push(self, fileNameDev, fileNamePC):
+    def push(self, args):
         self.vbPrint('Reading file data on PC...', end = ' ')
-        with open(fileNamePC, 'rb') as filePC:
+        with open(args.infile, 'rb') as filePC:
             fileData = str(filePC.read())
             #print('fileData: {}'.format(fileData))
         self.vbPrint('Done.\nSending write command...')
-        cmdText = "fileDev = open('{}', 'wb')\r\nfileDev.write({})\r\nfileDev.close()\r\n".format(fileNameDev, fileData)
+        cmdText = "fileDev = open('{}', 'wb')\r\nfileDev.write({})\r\nfileDev.close()\r\n".format(args.outfile, fileData)
         dataToSend = bytes(cmdText, 'UTF-8')
         self.serialPort.write(dataToSend)
         self.debugComputer(dataToSend)
         self.vbPrint('Done.')
         self.waitForREPL()
-        #self.close()
 
-    def pull(self, fileNameDev, fileNamePC):
-        data = self.read(fileNameDev, _print = False)
+    def pull(self, args):
+        data = self.read(args.infile, _print = False)
         self.vbPrint('Writing data to file...', end = ' ')
-        with open(fileNamePC, 'wb') as filePC:
+        with open(args.outfile, 'wb') as filePC:
             filePC.write(data)
         self.vbPrint('Done.')
 
-    def list(self, dirDev):
+    def list(self, args):
         self.vbPrint('Sending list command...', end = ' ')
-        cmdText = "import os\r\nos.listdir('{}')\r\n".format(dirDev)
+        cmdText = "import os\r\nos.listdir('{}')\r\n".format(args.dir)
         dataToSend = bytes(cmdText, 'UTF-8')
         self.serialPort.write(dataToSend)
         self.debugComputer(dataToSend)
@@ -105,41 +122,87 @@ class fileHandler():
             listing += i
             listing += '\n'
         self.vbPrint('Done.')
-        print('Contents of directory {} are:'.format(dirDev))
+        print('Contents of directory {} are:'.format(args.dir))
         print(listing)
-        #self.close()
-
-    def close(self):
-        self.vbPrint('Closing serial port...', end = ' ')
-        self.serialPort.close()
-        self.vbPrint('Done')
 
 if __name__ == '__main__':
-    #get operation and parameters from sys.argv
-    #call run with the needed parameters
-    #if no optional names are provided, substitute them with the required names
-    if '-v' in sys.argv or '--verbose' in sys.argv:
-        verbose = True
-    else:
-        verbose = False
+    with fileHandler() as handler:
+        rootParser = argparse.ArgumentParser(prog='uPyFile', description='A file transfer utility for MicroPython devices')
+        rootParser.add_argument(
+            'device',
+            help='Device to interact with',
+            type=str
+        )
+        rootParser.add_argument(
+            '--verbose',
+            '-v',
+            help='Enable verbose output',
+            action='store_true'
+        )
 
-    if '-d' in sys.argv or '--debug' in sys.argv:
-        debug = True
-    else:
-        debug = False
+        subParsers = rootParser.add_subparsers(dest='command')
+        subParsers.required = True
 
-    with fileHandler(sys.argv[1], verbose = verbose, debug = debug) as handler:
-        action = sys.argv[2]
-        #print(action)
-        if action == 'init':
-            handler.initDevice()
-        elif action == 'read':
-            handler.read(sys.argv[3])
-        elif action == 'push':
-            handler.push(sys.argv[3], sys.argv[4])
-        elif action == 'pull':
-            handler.pull(sys.argv[3], sys.argv[4])
-        elif action == 'ls' or action == 'list':
-            handler.list(sys.argv[3])
-        elif action == 'version':
-            print('Using uPyFile version {}'.format(_version))
+        initParser = subParsers.add_parser('init', help='Initialize a device')
+        initParser.set_defaults(function=handler.init)
+
+        readParser = subParsers.add_parser('read', help='Read a file from a device')
+        readParser.set_defaults(function=handler.read)
+        readParser.add_argument(
+            'file',
+            help='File to read',
+            type=str
+        )
+
+        pushParser = subParsers.add_parser('push', help='Push a file to a device')
+        pushParser.set_defaults(function=handler.push)
+        pushParser.add_argument(
+            'infile',
+            help='File on PC to push',
+            type=str
+        )
+        pushParser.add_argument(
+            'outfile',
+            help='File on device to push to',
+            type=str
+        )
+
+        pullParser = subParsers.add_parser('pull', help='Pull a file from a device')
+        pullParser.set_defaults(function=handler.pull)
+        pullParser.add_argument(
+            'infile',
+            help='File on device to pull',
+            type=str
+        )
+        pullParser.add_argument(
+            'outfile',
+            help='File on PC to pull to',
+            type=str
+        )
+
+        listParser = subParsers.add_parser('list', help='List a directory on a device')
+        listParser.set_defaults(function=handler.list)
+        listParser.add_argument(
+            'dir',
+            help='Directory to list',
+            type=str
+        )
+
+        args = rootParser.parse_args()
+
+
+        handler.open(args.device)   # Make the serial connection
+        args.function(args)         # Run the command
+
+        # if action == 'init':
+        #     handler.initDevice()
+        # elif action == 'read':
+        #     handler.read(sys.argv[3])
+        # elif action == 'push':
+        #     handler.push(sys.argv[3], sys.argv[4])
+        # elif action == 'pull':
+        #     handler.pull(sys.argv[3], sys.argv[4])
+        # elif action == 'ls' or action == 'list':
+        #     handler.list(sys.argv[3])
+        # elif action == 'version':
+        #     print('Using uPyFile version {}'.format(_version))
