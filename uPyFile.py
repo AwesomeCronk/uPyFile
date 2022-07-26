@@ -1,6 +1,6 @@
 import argparse, logging, serial
 
-_version = '2.0.0'
+_version = '2.0.1'
 readLimit = 4096
 
 class fileHandler():
@@ -51,7 +51,7 @@ class fileHandler():
         self.serialPort.write(b'\x03')           #send the stop code
         self.waitForREPL()
 
-    def read(self, args, _print = True):
+    def read(self, args):
         logging.info('Sending read command')
         cmdText = '\r\n'.join([
             "fileDev = open('{}', 'rb')".format(args.file),
@@ -76,12 +76,9 @@ class fileHandler():
         for i in deviceOutput.decode('UTF-8', errors = 'ignore').split('\r\n')[3:]:       #Get a list of bytes in '0xab' format
             if i[0:4] == '>>> ': break
             logging.debug(repr(i)); data += int(i, base = 16).to_bytes(1, 'little')     #convert to raw data and add to data variable
-        if _print:
-            print('Contents of {} are:'.format(args.file))
-            print(data.decode('UTF-8', errors = 'ignore'))      #print text version
-        else:
-            return data
-
+        print('Contents of {} are:'.format(args.file))
+        print(data.decode('UTF-8', errors = 'ignore'))      #print text version
+        
     def push(self, args):
         logging.info('Reading file data on PC')
         with open(args.infile, 'rb') as filePC:
@@ -100,7 +97,31 @@ class fileHandler():
         self.waitForREPL()
 
     def pull(self, args):
-        data = self.read(args.infile, _print = False)
+        logging.info('Sending read command')
+        cmdText = '\r\n'.join([
+            "fileDev = open('{}', 'rb')".format(args.infile),
+            "for i in fileDev.read(): print(hex(i))",
+            "",
+            "fileDev.close()",
+            ""
+            ])
+        dataToSend = bytes(cmdText, 'UTF-8')
+        self.serialPort.write(dataToSend)
+        self.pcLogger.debug(dataToSend)
+
+        logging.info('Reading response...')
+        deviceOutput = b''
+        dataReceived = self.serialPort.read(readLimit)
+        while dataReceived:
+            deviceOutput += dataReceived
+            dataReceived = self.serialPort.read(readLimit)
+        self.devLogger.debug(deviceOutput)
+        logging.info('Parsing response')
+        data = b''
+        for i in deviceOutput.decode('UTF-8', errors = 'ignore').split('\r\n')[3:]:       #Get a list of bytes in '0xab' format
+            if i[0:4] == '>>> ': break
+            logging.debug(repr(i)); data += int(i, base = 16).to_bytes(1, 'little')     #convert to raw data and add to data variable
+        
         logging.info('Writing data to file')
         with open(args.outfile, 'wb') as filePC:
             filePC.write(data)
