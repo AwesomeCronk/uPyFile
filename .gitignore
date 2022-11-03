@@ -1,2 +1,4 @@
 *.build
+*.distuPyFile
+install
 *.dist
