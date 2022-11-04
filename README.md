@@ -1,4 +1,7 @@
 # uPyFile
+
+*This file needs completely rewritten to reflect a major redesign of the communication system, currently waiting to get [ACP](https://github.com/AwesomeCronk/ACP) working first because that will require rewiriting the installation section. install.py is not guaranteed to work at this time. For stub.py documentation, see [stub.md](/stub.md)*
+
 This is a file management tool for use with MicroPython (uPython). It works by sending Ctrl+C to the device in order to stop execution of whatever script may be running, then waits for a REPL prompt. It then sends the python commands to open the correct file and read/write it.
 
 Currently, the program is pretty functional. It has a working installer (just download or clone this project and run the installer) and currently supports the following operations:
