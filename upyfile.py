@@ -1,7 +1,7 @@
 import argparse, logging, serial, time
 
 
-_version = '2.0.1'
+_version = '3.0.0'
 batchSize = 1024
 debug = True
 verbose = True
@@ -31,55 +31,43 @@ def closePort():
     else:
         pcLog.debug('Serial port already closed')
 
+def readPort(wait=True):
+    if wait:
+        while port.in_waiting == 0:
+            time.sleep(0.05)
+    return port.readline()
+
+def writePort(data):
+    port.write(data)
+
 def waitFor(line, shush=False):
     pcLog.info('Waiting for {}'.format(line))
     devOutput = b''
     while devOutput != line:
-        if port.in_waiting > 0:
-            devOutput = port.readline()
-            # Clutters debug when the stub is sent, thus the shush flag
-            if not shush: devLog.debug(devOutput)
-        else:
-            time.sleep(0.05)
+        devOutput = readPort()
+        # Clutters debug when the stub is sent, thus the shush flag
+        if not shush: devLog.debug(devOutput)
     pcLog.info('Done waiting')
 
 def checkResponse():
-    respRaw = port.readline().strip()
+    respRaw = readPort().strip()
     devLog.debug(respRaw)
     resp = respRaw.split(b':')
     if resp[0] == b'~~error': devLog.error(resp[1]); exit(1)
-    elif resp[0] != b'~~complete': devLog.error('Unexpected response: {}'.format(respRaw)); exit(1)
+    elif resp[0] == b'~~complete': pcLog.debug('Response ok')
+    else: pcLog.error('Unexpected response: {}'.format(respRaw)); exit(1)
 
 
 # Command implementation
-def cmd_init(args):
-    pcLog.debug('Compiling stub')
-    with open('stub.py', 'rb') as stubFile: stub = stubFile.read().replace(b'\n', b'\r\n')
-    
-    print('Initializing device')
-    port.write(b'\x03')     # Ctrl+C
-    waitFor(b'>>> ')
-    port.write(b'\x05')     # Ctrl+E?
-    port.write(stub)
-    port.write(b'\x04')     # Ctrl+D?
-    # pcLog.debug(stub.decode())
-    pcLog.info('Sent stub')
-    
-    cmd = ('batch {}\r\n'.format(batchSize)).encode()
-    port.write(cmd)
-    pcLog.debug(cmd)
-    waitFor(b'~~recvd:\r\n', shush=True)
-    checkResponse()
-
-def cmd_read(args):
+def _readFile(file):
     # Stub commands:
     # read file
     # readbuf
     # ...
 
     # Send read command
-    cmd = b'read ' + args.file.encode() + b'\r\n'
-    port.write(cmd)
+    cmd = b'read ' + file.encode() + b'\r\n'
+    writePort(cmd)
     pcLog.debug(cmd)
     waitFor(b'~~recvd:\r\n')
     checkResponse()
@@ -88,17 +76,17 @@ def cmd_read(args):
     while True:
         # Send readbuf command
         cmd = b'readbuf' + b'\r\n'
-        port.write(cmd)
+        writePort(cmd)
         pcLog.debug(cmd)
         waitFor(b'~~recvd:\r\n')
 
         # Process response
-        respRaw = port.readline()
+        respRaw = readPort()
         devLog.debug(respRaw)
         if respRaw == b'~~error:no data\r\n': pcLog.debug('No data, breaking loop'); break
         else: dataRaw += respRaw.strip()
 
-        respRaw = port.readline()
+        respRaw = readPort()
         devLog.debug(respRaw)
         if respRaw != b'~~complete:\r\n':
             devLog.error('Unexpected response: {}'.format(respRaw)); exit(1)
@@ -108,6 +96,30 @@ def cmd_read(args):
     while len(dataRaw):
         data += int('0x' + dataRaw[0:2].decode(), base=16).to_bytes(1, 'big')
         dataRaw = dataRaw[2:]
+    
+    return data
+
+def cmd_init(args):
+    pcLog.debug('Compiling stub')
+    with open('stub.py', 'rb') as stubFile: stub = stubFile.read().replace(b'\n', b'\r\n')
+    
+    print('Initializing device')
+    writePort(b'\x03')     # Ctrl+C
+    waitFor(b'>>> ')
+    writePort(b'\x05')     # Ctrl+E?
+    writePort(stub)
+    writePort(b'\x04')     # Ctrl+D?
+    # pcLog.debug(stub.decode())
+    pcLog.info('Sent stub')
+    
+    cmd = ('batch {}\r\n'.format(batchSize)).encode()
+    writePort(cmd)
+    pcLog.debug(cmd)
+    waitFor(b'~~recvd:\r\n', shush=True)
+    checkResponse()
+
+def cmd_read(args):
+    data = _readFile(args.file)
 
     print(data.decode('UTF-8', errors = 'ignore'))
     
@@ -129,68 +141,62 @@ def cmd_push(args):
 
         # Send writebuf command
         cmd = b'writebuf ' + dataHex + b'\r\n'
-        port.write(cmd)
+        writePort(cmd)
         pcLog.debug(cmd)
         waitFor(b'~~recvd:\r\n')
         checkResponse()
 
     # Send write command
-    cmd = b'write ' + args.file + b'\r\n'
-    port.write(cmd)
+    cmd = b'write ' + args.outfile.encode() + b'\r\n'
+    writePort(cmd)
     pcLog.debug(cmd)
     waitFor(b'~~recvd:\r\n')
     checkResponse()
 
 def cmd_pull(args):
-    logging.info('Sending read command')
-    cmdText = '\r\n'.join([
-        "fileDev = open('{}', 'rb')".format(args.infile),
-        "for i in fileDev.read(): print(hex(i))",
-        "",
-        "fileDev.close()",
-        ""
-        ])
-    dataToSend = bytes(cmdText, 'UTF-8')
-    self.port.write(dataToSend)
-    self.pcLog.debug(dataToSend)
-
-    logging.info('Reading response...')
-    deviceOutput = b''
-    dataReceived = self.port.read(readLimit)
-    while dataReceived:
-        deviceOutput += dataReceived
-        dataReceived = self.port.read(readLimit)
-    self.devLog.debug(deviceOutput)
-    logging.info('Parsing response')
-    data = b''
-    for i in deviceOutput.decode('UTF-8', errors = 'ignore').split('\r\n')[3:]:       #Get a list of bytes in '0xab' format
-        if i[0:4] == '>>> ': break
-        logging.debug(repr(i)); data += int(i, base = 16).to_bytes(1, 'little')     #convert to raw data and add to data variable
+    data = _readFile(args.infile)
     
-    logging.info('Writing data to file')
     with open(args.outfile, 'wb') as filePC:
         filePC.write(data)
 
 def cmd_list(args):
-    logging.info('Sending list command')
-    cmdText = '\r\n'.join([
-        "import os",
-        "for item in os.listdir('{}'): print(item)".format(args.dir),
-        "",
-        ""
-    ])
-    dataToSend = bytes(cmdText, 'UTF-8')
-    self.port.write(dataToSend)
-    self.pcLog.debug(dataToSend)
-    logging.info('Reading response')
-    dataReceived = self.port.read(readLimit)
-    self.devLog.debug(dataReceived)
-    logging.info('Parsing response')
-    listing = ''
-    for i in dataReceived.decode('UTF-8', errors = 'ignore').split('\r\n')[3:]:
-        if i == '>>> ': break
-        listing += i
-        listing += '\n'
+    # Stub commands:
+    # list
+
+    # Send the list command
+    cmd = b'list ' + args.dir.encode() + b'\r\n'
+    writePort(cmd)
+    pcLog.debug(cmd)
+    waitFor(b'~~recvd:\r\n')
+    checkResponse()
+
+    dataRaw = b''
+    while True:
+        # Send readbuf command
+        cmd = b'readbuf' + b'\r\n'
+        writePort(cmd)
+        pcLog.debug(cmd)
+        waitFor(b'~~recvd:\r\n')
+
+        # Process response
+        respRaw = readPort()
+        devLog.debug(respRaw)
+        if respRaw == b'~~error:no data\r\n': pcLog.debug('No data, breaking loop'); break
+        else: dataRaw += respRaw.strip()
+
+        respRaw = readPort()
+        devLog.debug(respRaw)
+        if respRaw != b'~~complete:\r\n':
+            devLog.error('Unexpected response: {}'.format(respRaw)); exit(1)
+
+    # Decode data
+    data = b''
+    while len(dataRaw):
+        data += int('0x' + dataRaw[0:2].decode(), base=16).to_bytes(1, 'big')
+        dataRaw = dataRaw[2:]
+    
+    listing = data.decode()
+
     print('Contents of directory {} are:'.format(args.dir))
     print(listing)
 

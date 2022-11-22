@@ -14,7 +14,7 @@ while runFlag:
     if cmd == 'list':
         if len(params) < 1:
             print('~~error:missing params'); continue
-        try: print('\n'.join(os.listdir(params[0])))
+        try: buffer = '\n'.join(os.listdir(params[0])).encode()
         except: print('~~error:bad path'); continue
         print('~~complete:')
 

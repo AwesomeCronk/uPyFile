@@ -27,6 +27,8 @@ python3 -m nuitka install.py --onefile -o install.exe
 ```
 
 ## Installing:
+The installation script is still available in python source form. I'm working on a release binary for `upyfile`, but an install script will probably not be included. `upyfile` and `install` are built with Nuitka (see [build.sh](/build.sh)). Consider this section relatively out of order until a better installation system is available.
+
 Clone the repository or click the green `Code` button and open a terminal in the downloaded folder.
 
 ### Linux:
