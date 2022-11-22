@@ -1,4 +1,6 @@
 *.build
-*.distuPyFile
-install
 *.dist
+install
+upyfile
+release*.zip
+release*.7z
