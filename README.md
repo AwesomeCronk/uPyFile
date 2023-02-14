@@ -1,43 +1,43 @@
 # uPyFile
 
-*This file needs completely rewritten to reflect a major redesign of the communication system, currently waiting to get [ACP](https://github.com/AwesomeCronk/ACP) working first because that will require rewiriting the installation section. install.py is not guaranteed to work at this time. For stub.py documentation, see [stub.md](/stub.md)*
+This is a file management tool for use with MicroPython (uPython).
 
-This is a file management tool for use with MicroPython (uPython). It works by sending Ctrl+C to the device in order to stop execution of whatever script may be running, then waits for a REPL prompt. It then sends the python commands to open the correct file and read/write it.
+## Quick how-to
 
-Currently, the program is pretty functional. It has a working installer (just download or clone this project and run the installer) and currently supports the following operations:
+* Initialize a device with `$ upyfile -p /dev/ttyACM0 init`
+* Read the contents of a file on a device in the terminal with `$ upyfile -p /dev/ttyACM0 read /file/on/dev`
+* Push a file to a device with `$ upyfile -p /dev/ttyACM0 push /file/on/pc /file/on/dev`
+* Pull a file from a device with `$ upyfile -p /dev/ttyACM0 pull /file/on/dev /file/on/pc`
+* List files on a device with `$ upyfile -p /dev/ttyACM0 list /dir/to/list`
 
-* Reading files
-* Pushing files from the PC to the device
-* Pulling files from the device to the PC
-* Listing directory contents
+Windows users should use DOS paths (`path\to\file`) when referencing a file on the PC, but should still use UNIX paths (`path/to/file`) when referencing a file or directory on a device.
 
-## Compiling:
+## Building
+
 Compiling requires the Python packages `nuitka` and `pySerial`. The folders `uPyFile.build` and `uPyFile.dist` will be created (or `install.build` and `install.dist` if compiling the installer). They can safely be ignored or deleted. Compiling the installer is not necessary unless it has been modified.
 
-### Linux:
+### Linux
+
 ```shell
-python3 -m nuitka uPyFile.py --onefile -o uPyFile
-python3 -m nuitka install.py --onefile -o install
+python3 -m nuitka upyfile.py --standalone --include-data-file=stub.py=stub.py
 ```
 
-### Windows:
-```
-python3 -m nuitka uPyFile.py --onefile -o uPyFile.exe
-python3 -m nuitka install.py --onefile -o install.exe
-```
+### Windows
 
-## Installing:
-The installation script is still available in python source form. I'm working on a release binary for `upyfile`, but an install script will probably not be included. `upyfile` and `install` are built with Nuitka (see [build.sh](/build.sh)). Consider this section relatively out of order until a better installation system is available.
-
-Clone the repository or click the green `Code` button and open a terminal in the downloaded folder.
-
-### Linux:
-Run:
 ```
-$ sudo ./install
-$ sudo chmod 775 /usr/local/bin/uPyFile/*
-$ sudo ln -s /usr/local/bin/uPyFile/uPyFile /usr/local/bin/upyfile
+python -m nuitka upyfile.py --standalone --include-data-file=stub.py=stub.py
 ```
 
-### Windows:
-Run `./install` and add `C:\Users\%USERNAME%\AppData\Local\Programs\uPyFile` to PATH.
+## Installing
+
+Fetch the desired release from https://github.com/AwesomeCronk/uPyFile/releases
+
+### Linux
+
+* Unpack it to `/usr/local/bin/`
+* `$ cd /usr/local/bin && sudo ln -s /usr/local/bin/upyfile-<version.goes.here>-linux/upyfile upyfile`
+
+### Windows
+
+* (Linux) or `%LOCALAPPDATA%\Programs\`
+* Add `%LOCALAPPDATA%\Programs\uPyFile-<version-goes-here>-Windows` to your user path

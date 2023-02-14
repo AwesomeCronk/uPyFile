@@ -1,7 +1,7 @@
-import argparse, logging, serial, time
+import argparse, logging, os, serial, time
 
 
-_version = '3.0.0'
+_version = '3.0.1'
 batchSize = 1024
 debug = True
 verbose = True
@@ -100,8 +100,8 @@ def _readFile(file):
     return data
 
 def cmd_init(args):
-    pcLog.debug('Compiling stub')
-    with open('stub.py', 'rb') as stubFile: stub = stubFile.read().replace(b'\n', b'\r\n')
+    pcLog.debug('Loading stub')
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'stub.py'), 'rb') as stubFile: stub = stubFile.read().replace(b'\n', b'\r\n')
     
     print('Initializing device')
     writePort(b'\x03')     # Ctrl+C
@@ -203,7 +203,7 @@ def cmd_list(args):
 
 # Main section
 if __name__ == '__main__':
-    rootParser = argparse.ArgumentParser(prog='uPyFile', description='A file transfer utility for MicroPython devices')
+    rootParser = argparse.ArgumentParser(prog='uPyFile', description='uPyfile {}: A file transfer utility for MicroPython devices'.format(_version))
     rootParser.add_argument(
         '-p',
         '--port',

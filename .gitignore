@@ -1,6 +1,8 @@
-*.build
-*.dist
+*.linux
+*.windows
 install
 upyfile
 release*.zip
 release*.7z
+*.build
+*.dist
