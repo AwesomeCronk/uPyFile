@@ -2,6 +2,7 @@ The [stub program](/stub.py) is uploaded to the device when `init` is run. It ru
 
 A few notes:
 * All hex data is presented in uppercase, no leading `0x`.
+* All hex data is exchanged in batches of 1024 bytes, regardless of buffer size.
 * The stub will print `ready~` when prompting for a command.
 * The stub will print `~~recvd:` when a command is received.
 * All commands will print `~~error:reason` on an error.

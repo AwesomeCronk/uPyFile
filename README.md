@@ -12,6 +12,8 @@ This is a file management tool for use with MicroPython (uPython).
 
 Windows users should use DOS paths (`path\to\file`) when referencing a file on the PC, but should still use UNIX paths (`path/to/file`) when referencing a file or directory on a device.
 
+If the device does not seem to be communicating properly, check its documentation to be sure that you aren't overrunning its UART buffer and set the appropriate buffer size with the `-B` argument.
+
 ## Building
 
 Compiling requires the Python packages `nuitka` and `pySerial`. The folders `uPyFile.build` and `uPyFile.dist` will be created (or `install.build` and `install.dist` if compiling the installer). They can safely be ignored or deleted. Compiling the installer is not necessary unless it has been modified.
@@ -24,7 +26,7 @@ python3 -m nuitka upyfile.py --standalone --include-data-file=stub.py=stub.py
 
 ### Windows
 
-```
+```shell
 python -m nuitka upyfile.py --standalone --include-data-file=stub.py=stub.py
 ```
 
@@ -39,5 +41,5 @@ Fetch the desired release from https://github.com/AwesomeCronk/uPyFile/releases
 
 ### Windows
 
-* (Linux) or `%LOCALAPPDATA%\Programs\`
+* Unpack it or `%LOCALAPPDATA%\Programs\`
 * Add `%LOCALAPPDATA%\Programs\uPyFile-<version-goes-here>-Windows` to your user path

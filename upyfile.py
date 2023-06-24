@@ -1,7 +1,7 @@
 import argparse, logging, os, serial, time
 
 
-_version = '3.0.1'
+_version = '3.1.0.pre'
 batchSize = 1024
 debug = True
 verbose = True
@@ -9,6 +9,8 @@ portOpen = False
 pcLog = logging.getLogger('PC')
 devLog = logging.getLogger('DEV')
 port = None
+
+bufferSize = 1024
 
 
 # Serial port management
@@ -38,7 +40,15 @@ def readPort(wait=True):
     return port.readline()
 
 def writePort(data):
-    port.write(data)
+    # Write the data in batches to ensure the buffer never overflows
+    remaining = data
+    while len(remaining) > bufferSize:
+        port.write(remaining[0:bufferSize])
+        remaining = remaining[bufferSize:]
+        port.flush()
+    if len(remaining):
+        port.write(remaining)
+        port.flush()
 
 def waitFor(line, shush=False):
     pcLog.info('Waiting for {}'.format(line))
@@ -107,7 +117,7 @@ def cmd_init(args):
     writePort(b'\x03')     # Ctrl+C
     waitFor(b'>>> ')
     writePort(b'\x05')     # Ctrl+E?
-    writePort(stub)
+    writePort(stub)    
     writePort(b'\x04')     # Ctrl+D?
     # pcLog.debug(stub.decode())
     pcLog.info('Sent stub')
@@ -225,6 +235,13 @@ if __name__ == '__main__':
         default=0.2
     )
     rootParser.add_argument(
+        '-B',
+        '--buffer',
+        help='Buffer size',
+        type=int,
+        default=1024
+    )
+    rootParser.add_argument(
         '-v',
         '--verbose',
         help='Enable verbose output',
@@ -284,6 +301,8 @@ if __name__ == '__main__':
 
     if args.verbose: logging.basicConfig(level=logging.DEBUG)
     else: logging.basicConfig(level=logging.WARNING)
+
+    bufferSize = args.buffer
 
     try:
         openPort(args.port, baud=args.baud, timeout=args.timeout)   # Make the serial connection
