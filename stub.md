@@ -25,7 +25,7 @@ A few notes:
   Prints out the first so many bytes of the buffer in uppercase hex, up to the configured batch size. Newline indicates end of data.
 
 * writebuf <data>
-  Prompts for data in hex, and writes it to the buffer. Newline indicates end of data. 
+  Writes data to the buffer. Newline indicates end of data. 
 
 * clearbuf
   Clears the contents of the buffer.

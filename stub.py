@@ -11,7 +11,21 @@ while runFlag:
     cmd, *params = cmdText.strip().split()
     print('~~recvd:')
 
-    if cmd == 'list':
+    if cmd == 'cd':
+        if len(params) < 1:
+            print('~~error:missing params'); continue
+        try: os.chdir(params[0])
+        except Exception as E: print('~~error:{}'.format(repr(E))); continue
+
+        print('~~complete:')
+
+    elif cmd == 'pwd':
+        try: buffer = os.getcwd().encode()
+        except Exception as E: print('~~error:{}'.format(repr(E))); continue
+
+        print('~~complete:')
+
+    elif cmd == 'list':
         if len(params) < 1:
             print('~~error:missing params'); continue
         try: buffer = '\n'.join(os.listdir(params[0])).encode()
@@ -55,7 +69,7 @@ while runFlag:
             itemType, itemName, itemSize = entry
             entries[e] = '{} : {}{} : {}'.format(itemType, itemName, ' ' * (itemNameLen - len(itemName)), itemSize)
 
-        buffer += '\n'.join(entries).encode()
+        buffer = '\n'.join(entries).encode()
 
         print('~~complete:')
 

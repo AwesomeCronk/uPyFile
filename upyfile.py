@@ -163,11 +163,55 @@ def cmd_pull(args):
     with open(args.outfile, 'wb') as filePC:
         filePC.write(data)
 
+def cmd_cd(args):
+    # Stub commands:
+    # cd
+
+    # Send cd command
+    cmd = b'cd ' + args.dir.encode() + b'\r\n'
+    writePort(cmd)
+    waitFor(b'~~recvd:\r\n')
+    verifyResponse()
+
+def cmd_pwd(args):
+    # Stub commands:
+    # pwd
+
+    # Send pwd command
+    cmd = b'pwd\r\n'
+    writePort(cmd)
+    waitFor(b'~~recvd:\r\n')
+    verifyResponse()
+
+    dataRaw = b''
+    while True:
+        # Send readbuf command
+        cmd = b'readbuf' + b'\r\n'
+        writePort(cmd)
+        waitFor(b'~~recvd:\r\n')
+
+        # Process response
+        respRaw = readPort()
+        if respRaw == b'~~error:no data\r\n': pcLog.debug('No data, breaking loop'); break
+        else: dataRaw += respRaw.strip()
+
+        respRaw = readPort()
+        if respRaw != b'~~complete:\r\n':
+            devLog.error('Unexpected response: {}'.format(respRaw)); exit(1)
+
+    # Decode data
+    data = b''
+    while len(dataRaw):
+        data += int('0x' + dataRaw[0:2].decode(), base=16).to_bytes(1, 'big')
+        dataRaw = dataRaw[2:]
+    
+    print(data.decode())
+
 def cmd_list(args):
     # Stub commands:
     # list
 
-    # Send the list command
+    # Send list command
     cmd = b'list ' + args.dir.encode() + b'\r\n'
     writePort(cmd)
     waitFor(b'~~recvd:\r\n')
@@ -204,7 +248,7 @@ def cmd_ilist(args):
     # Stub commands:
     # ilist
 
-    # Send the list command
+    # Send ilist command
     cmd = b'ilist ' + args.dir.encode() + b'\r\n'
     writePort(cmd)
     waitFor(b'~~recvd:\r\n')
@@ -241,7 +285,7 @@ def cmd_mkdir(args):
     # Stub commands:
     # mkdir
 
-    # Send the mkdir command
+    # Send mkdir command
     cmd = b'mkdir ' + args.path.encode() + b'\r\n'
     writePort(cmd)
     waitFor(b'~~recvd:\r\n')
@@ -251,7 +295,7 @@ def cmd_rmdir(args):
     # Stub commands:
     # mkdir
 
-    # Send the rmdir command
+    # Send rmdir command
     cmd = b'rmdir ' + args.path.encode() + b'\r\n'
     writePort(cmd)
     waitFor(b'~~recvd:\r\n')
@@ -335,7 +379,18 @@ if __name__ == '__main__':
         type=str
     )
 
-    listParser = subParsers.add_parser('list', help='List a directory on a device')
+    cdParser = subParsers.add_parser('cd', help='Change the working directory')
+    cdParser.set_defaults(function=cmd_cd)
+    cdParser.add_argument(
+        'dir',
+        help='What to change the working directory to',
+        type=str
+    )
+
+    pwdParser = subParsers.add_parser('pwd', help='Print the working directory')
+    pwdParser.set_defaults(function=cmd_pwd)
+
+    listParser = subParsers.add_parser('list', help='List a directory on a device (names only)')
     listParser.set_defaults(function=cmd_list)
     listParser.add_argument(
         'dir',
@@ -343,7 +398,7 @@ if __name__ == '__main__':
         type=str
     )
 
-    listParser = subParsers.add_parser('ilist', help='List a directory on a device')
+    listParser = subParsers.add_parser('ilist', help='List a directory on a device (names and attributes)')
     listParser.set_defaults(function=cmd_ilist)
     listParser.add_argument(
         'dir',
