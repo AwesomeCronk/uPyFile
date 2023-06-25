@@ -1,7 +1,7 @@
 import argparse, logging, os, serial, time
 
 
-_version = '3.1.0.pre'
+_version = '3.1.0'
 bufferSize = 1024   # Buffer size for serial data
 batchSize = 1024    # Batch size for command data
 debug = True
@@ -123,45 +123,6 @@ def cmd_init(args):
     writePort(cmd)
     waitFor(b'~~recvd:\r\n', shush=True)
     verifyResponse()
-
-def cmd_read(args):
-    data = _readFile(args.file)
-
-    print(data.decode('UTF-8', errors = 'ignore'))
-    
-def cmd_push(args):
-    with open(args.infile, 'rb') as infile: data = infile.read()
-    
-    # Stub commands:
-    # writebuf
-    # ...
-    # write file
-
-    while len(data):
-        # Encode data
-        dataHex = ''
-        dataBatch = data[0:batchSize]; data = data[batchSize:]
-        for i in dataBatch:
-            dataHex += '{:02X}'.format(i)
-        dataHex = dataHex.encode()
-
-        # Send writebuf command
-        cmd = b'writebuf ' + dataHex + b'\r\n'
-        writePort(cmd)
-        waitFor(b'~~recvd:\r\n')
-        verifyResponse()
-
-    # Send write command
-    cmd = b'write ' + args.outfile.encode() + b'\r\n'
-    writePort(cmd)
-    waitFor(b'~~recvd:\r\n')
-    verifyResponse()
-
-def cmd_pull(args):
-    data = _readFile(args.infile)
-    
-    with open(args.outfile, 'wb') as filePC:
-        filePC.write(data)
 
 def cmd_cd(args):
     # Stub commands:
@@ -301,6 +262,65 @@ def cmd_rmdir(args):
     waitFor(b'~~recvd:\r\n')
     verifyResponse()
 
+def cmd_read(args):
+    data = _readFile(args.file)
+
+    print(data.decode('UTF-8', errors = 'ignore'))
+    
+def cmd_push(args):
+    with open(args.infile, 'rb') as infile: data = infile.read()
+    
+    # Stub commands:
+    # writebuf
+    # ...
+    # write file
+
+    while len(data):
+        # Encode data
+        dataHex = ''
+        dataBatch = data[0:batchSize]; data = data[batchSize:]
+        for i in dataBatch:
+            dataHex += '{:02X}'.format(i)
+        dataHex = dataHex.encode()
+
+        # Send writebuf command
+        cmd = b'writebuf ' + dataHex + b'\r\n'
+        writePort(cmd)
+        waitFor(b'~~recvd:\r\n')
+        verifyResponse()
+
+    # Send write command
+    cmd = b'write ' + args.outfile.encode() + b'\r\n'
+    writePort(cmd)
+    waitFor(b'~~recvd:\r\n')
+    verifyResponse()
+
+def cmd_pull(args):
+    data = _readFile(args.infile)
+    
+    with open(args.outfile, 'wb') as filePC:
+        filePC.write(data)
+
+def cmd_ren(args):
+    # Stub commands:
+    # ren
+
+    # Send ren command
+    cmd = b'ren ' + args.old.encode() + b' ' + args.new.encode() + b'\r\n'
+    writePort(cmd)
+    waitFor(b'~~recvd:\r\n')
+    verifyResponse()
+
+def cmd_rm(args):
+    # Stub commands:
+    # rm
+
+    # Send rm command
+    cmd = b'rm ' + args.file.encode() + b'\r\n'
+    writePort(cmd)
+    waitFor(b'~~recvd:\r\n')
+    verifyResponse()
+
 
 # Main section
 if __name__ == '__main__':
@@ -345,40 +365,6 @@ if __name__ == '__main__':
     initParser = subParsers.add_parser('init', help='Initialize a device')
     initParser.set_defaults(function=cmd_init)
 
-    readParser = subParsers.add_parser('read', help='Read a file from a device')
-    readParser.set_defaults(function=cmd_read)
-    readParser.add_argument(
-        'file',
-        help='File to read',
-        type=str
-    )
-
-    pushParser = subParsers.add_parser('push', help='Push a file to a device')
-    pushParser.set_defaults(function=cmd_push)
-    pushParser.add_argument(
-        'infile',
-        help='File on PC to push',
-        type=str
-    )
-    pushParser.add_argument(
-        'outfile',
-        help='File on device to push to',
-        type=str
-    )
-
-    pullParser = subParsers.add_parser('pull', help='Pull a file from a device')
-    pullParser.set_defaults(function=cmd_pull)
-    pullParser.add_argument(
-        'infile',
-        help='File on device to pull',
-        type=str
-    )
-    pullParser.add_argument(
-        'outfile',
-        help='File on PC to pull to',
-        type=str
-    )
-
     cdParser = subParsers.add_parser('cd', help='Change the working directory')
     cdParser.set_defaults(function=cmd_cd)
     cdParser.add_argument(
@@ -419,6 +405,61 @@ if __name__ == '__main__':
     rmdirParser.add_argument(
         'path',
         help='Path at which to create a directory',
+        type=str
+    )
+
+    readParser = subParsers.add_parser('read', help='Read a file from a device')
+    readParser.set_defaults(function=cmd_read)
+    readParser.add_argument(
+        'file',
+        help='File to read',
+        type=str
+    )
+
+    pushParser = subParsers.add_parser('push', help='Push a file to a device')
+    pushParser.set_defaults(function=cmd_push)
+    pushParser.add_argument(
+        'infile',
+        help='File on PC to push',
+        type=str
+    )
+    pushParser.add_argument(
+        'outfile',
+        help='File on device to push to',
+        type=str
+    )
+
+    pullParser = subParsers.add_parser('pull', help='Pull a file from a device')
+    pullParser.set_defaults(function=cmd_pull)
+    pullParser.add_argument(
+        'infile',
+        help='File on device to pull',
+        type=str
+    )
+    pullParser.add_argument(
+        'outfile',
+        help='File on PC to pull to',
+        type=str
+    )
+
+    renParser = subParsers.add_parser('ren', help='Rename a file or directory')
+    renParser.set_defaults(function=cmd_ren)
+    renParser.add_argument(
+        'old',
+        help='File to delete',
+        type=str
+    )
+    renParser.add_argument(
+        'new',
+        help='File to delete',
+        type=str
+    )
+
+    rmParser = subParsers.add_parser('rm', help='Remove a file')
+    rmParser.set_defaults(function=cmd_rm)
+    rmParser.add_argument(
+        'file',
+        help='File to delete',
         type=str
     )
 

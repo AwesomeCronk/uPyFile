@@ -9,38 +9,67 @@ A few notes:
 * All commands will print `~~complete:` when finished.
 
 ## Commands
-* list <path>
+
+* cd `path`
+
+  Changes the working directory to the specified path.
+
+* pwd
+
+  Prints the working directory.
+
+* list `path`
+
   Prints the names of all files and folders in the specified directory, separated by newlines.
 
-* ilist <path>
+* ilist `path`
+
   Prints the names of all files and folders in the specified directory, including the type and size, separated by newlines.
 
-* read <path>
+* mkdir `path`
+
+  Creates a directory at the specified path
+
+* rmdir `path`
+
+  Removes the directory at the specified path
+
+* read `path`
+
   Opens the specified file and reads it's contents into the buffer. Clears existing buffer contents.
 
-* write <path>
+* write `path`
+
   Opens the specified file and writes the contents of the buffer into it.
 
+* ren `old` `new`
+
+  Renames a file or directory.
+
+* rm `path`
+
+  Removes a file.
+
+* batch `size`
+
+  Sets the batch size (default 1024).
+
 * readbuf
+
   Prints out the first so many bytes of the buffer in uppercase hex, up to the configured batch size. Newline indicates end of data.
 
-* writebuf <data>
+* writebuf `data`
+
   Writes data to the buffer. Newline indicates end of data. 
 
 * clearbuf
+
   Clears the contents of the buffer.
 
-* batch <size>
-  Sets the batch size (default 1024).
-
 * quit
+
   Quits to the uPython REPL
 
 * reboot
+
   Calls `machine.reset()` to reboot the uPython device.
-
-* mkdir <path>
-  Creates a directory at the specified path
-
-* rmdir <path>
-  Removes the directory at the specified path

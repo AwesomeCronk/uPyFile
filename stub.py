@@ -73,6 +73,20 @@ while runFlag:
 
         print('~~complete:')
 
+    elif cmd == 'mkdir':
+        if len(params) < 1:
+            print('~~error:missing params'); continue
+        try: os.mkdir(params[0])
+        except Exception as E: print('~~error:{}'.format(repr(E))); continue
+        print('~~complete:')
+
+    elif cmd == 'rmdir':
+        if len(params) < 1:
+            print('~~error:missing params'); continue
+        try: os.rmdir(params[0])
+        except Exception as E: print('~~error:{}'.format(repr(E))); continue
+        print('~~complete:')
+
     elif cmd == 'read':
         if len(params) < 1:
             print('~~error:missing params'); continue
@@ -85,6 +99,22 @@ while runFlag:
             print('~~error:missing params'); continue
         try: file = open(params[0], 'wb'); null = file.write(buffer); file.close(); buffer = b''
         except Exception as E: print('~~error:{}'.format(repr(E))); continue
+        print('~~complete:')
+
+    elif cmd == 'ren':
+        if len(params) < 2:
+            print('~~error:missing params'); continue
+        try: os.rename(params[0], params[1])
+        except Exception as E: print('~~error:{}'.format(repr(E))); continue
+
+        print('~~complete:')
+
+    elif cmd == 'rm':
+        if len(params) < 1:
+            print('~~error:missing params'); continue
+        try: os.remove(params[0])
+        except Exception as E: print('~~error:{}'.format(repr(E))); continue
+
         print('~~complete:')
 
     elif cmd == 'readbuf':
@@ -120,20 +150,6 @@ while runFlag:
     elif cmd == 'reboot':
         print('~~complete:')
         machine.reset()
-
-    elif cmd == 'mkdir':
-        if len(params) < 1:
-            print('~~error:missing params'); continue
-        try: os.mkdir(params[0])
-        except Exception as E: print('~~error:{}'.format(repr(E))); continue
-        print('~~complete:')
-
-    elif cmd == 'rmdir':
-        if len(params) < 1:
-            print('~~error:missing params'); continue
-        try: os.rmdir(params[0])
-        except Exception as E: print('~~error:{}'.format(repr(E))); continue
-        print('~~complete:')
 
     else:
         print('~~error:bad command')
