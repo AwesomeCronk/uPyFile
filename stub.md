@@ -10,13 +10,16 @@ A few notes:
 
 ## Commands
 * list <path>
-  Prints the names of all files and folders in the specified directory, separated by newlines. Returns the error `bad path` if the path is invalid.
+  Prints the names of all files and folders in the specified directory, separated by newlines.
+
+* ilist <path>
+  Prints the names of all files and folders in the specified directory, including the type and size, separated by newlines.
 
 * read <path>
-  Opens the specified file and reads it's contents into the buffer. Clears existing buffer contents. Returns the error `bad path` if the path is invalid.
+  Opens the specified file and reads it's contents into the buffer. Clears existing buffer contents.
 
 * write <path>
-  Opens the specified file and writes the contents of the buffer into it. Returns the error `bad path` if the path is invalid.
+  Opens the specified file and writes the contents of the buffer into it.
 
 * readbuf
   Prints out the first so many bytes of the buffer in uppercase hex, up to the configured batch size. Newline indicates end of data.
@@ -35,3 +38,9 @@ A few notes:
 
 * reboot
   Calls `machine.reset()` to reboot the uPython device.
+
+* mkdir <path>
+  Creates a directory at the specified path
+
+* rmdir <path>
+  Removes the directory at the specified path

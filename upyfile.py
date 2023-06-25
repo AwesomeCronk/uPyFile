@@ -2,7 +2,8 @@ import argparse, logging, os, serial, time
 
 
 _version = '3.1.0.pre'
-batchSize = 1024
+bufferSize = 1024   # Buffer size for serial data
+batchSize = 1024    # Batch size for command data
 debug = True
 verbose = True
 portOpen = False
@@ -10,7 +11,6 @@ pcLog = logging.getLogger('PC')
 devLog = logging.getLogger('DEV')
 port = None
 
-bufferSize = 1024
 
 
 # Serial port management
@@ -33,13 +33,17 @@ def closePort():
     else:
         pcLog.debug('Serial port already closed')
 
-def readPort(wait=True):
+def readPort(wait=True, shush=False):
     if wait:
         while port.in_waiting == 0:
             time.sleep(0.05)
-    return port.readline()
+    data = port.readline()
+    # Clutters debug when the stub is sent, thus the shush flag
+    if not shush: devLog.debug(data)
+    return data
 
 def writePort(data):
+    pcLog.debug(data)
     # Write the data in batches to ensure the buffer never overflows
     remaining = data
     while len(remaining) > bufferSize:
@@ -54,14 +58,11 @@ def waitFor(line, shush=False):
     pcLog.info('Waiting for {}'.format(line))
     devOutput = b''
     while devOutput != line:
-        devOutput = readPort()
-        # Clutters debug when the stub is sent, thus the shush flag
-        if not shush: devLog.debug(devOutput)
+        devOutput = readPort(shush=shush)
     pcLog.info('Done waiting')
 
-def checkResponse():
+def verifyResponse():
     respRaw = readPort().strip()
-    devLog.debug(respRaw)
     resp = respRaw.split(b':')
     if resp[0] == b'~~error': devLog.error(resp[1]); exit(1)
     elif resp[0] == b'~~complete': pcLog.debug('Response ok')
@@ -78,26 +79,22 @@ def _readFile(file):
     # Send read command
     cmd = b'read ' + file.encode() + b'\r\n'
     writePort(cmd)
-    pcLog.debug(cmd)
     waitFor(b'~~recvd:\r\n')
-    checkResponse()
+    verifyResponse()
 
     dataRaw = b''
     while True:
         # Send readbuf command
         cmd = b'readbuf' + b'\r\n'
         writePort(cmd)
-        pcLog.debug(cmd)
         waitFor(b'~~recvd:\r\n')
 
         # Process response
         respRaw = readPort()
-        devLog.debug(respRaw)
         if respRaw == b'~~error:no data\r\n': pcLog.debug('No data, breaking loop'); break
         else: dataRaw += respRaw.strip()
 
         respRaw = readPort()
-        devLog.debug(respRaw)
         if respRaw != b'~~complete:\r\n':
             devLog.error('Unexpected response: {}'.format(respRaw)); exit(1)
 
@@ -114,19 +111,18 @@ def cmd_init(args):
     with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'stub.py'), 'rb') as stubFile: stub = stubFile.read().replace(b'\n', b'\r\n')
     
     print('Initializing device')
-    writePort(b'\x03')     # Ctrl+C
+    writePort(b'\x03')      # Ctrl+C
     waitFor(b'>>> ')
-    writePort(b'\x05')     # Ctrl+E?
+    writePort(b'\x05')      # Ctrl+E?
     writePort(stub)    
-    writePort(b'\x04')     # Ctrl+D?
-    # pcLog.debug(stub.decode())
+    writePort(b'\x04')      # Ctrl+D?
     pcLog.info('Sent stub')
+    readPort()      # Read from the device so that errors with stub loading don't get lost in the next `waitFor` call
     
     cmd = ('batch {}\r\n'.format(batchSize)).encode()
     writePort(cmd)
-    pcLog.debug(cmd)
     waitFor(b'~~recvd:\r\n', shush=True)
-    checkResponse()
+    verifyResponse()
 
 def cmd_read(args):
     data = _readFile(args.file)
@@ -152,16 +148,14 @@ def cmd_push(args):
         # Send writebuf command
         cmd = b'writebuf ' + dataHex + b'\r\n'
         writePort(cmd)
-        pcLog.debug(cmd)
         waitFor(b'~~recvd:\r\n')
-        checkResponse()
+        verifyResponse()
 
     # Send write command
     cmd = b'write ' + args.outfile.encode() + b'\r\n'
     writePort(cmd)
-    pcLog.debug(cmd)
     waitFor(b'~~recvd:\r\n')
-    checkResponse()
+    verifyResponse()
 
 def cmd_pull(args):
     data = _readFile(args.infile)
@@ -176,26 +170,22 @@ def cmd_list(args):
     # Send the list command
     cmd = b'list ' + args.dir.encode() + b'\r\n'
     writePort(cmd)
-    pcLog.debug(cmd)
     waitFor(b'~~recvd:\r\n')
-    checkResponse()
+    verifyResponse()
 
     dataRaw = b''
     while True:
         # Send readbuf command
         cmd = b'readbuf' + b'\r\n'
         writePort(cmd)
-        pcLog.debug(cmd)
         waitFor(b'~~recvd:\r\n')
 
         # Process response
         respRaw = readPort()
-        devLog.debug(respRaw)
         if respRaw == b'~~error:no data\r\n': pcLog.debug('No data, breaking loop'); break
         else: dataRaw += respRaw.strip()
 
         respRaw = readPort()
-        devLog.debug(respRaw)
         if respRaw != b'~~complete:\r\n':
             devLog.error('Unexpected response: {}'.format(respRaw)); exit(1)
 
@@ -209,6 +199,63 @@ def cmd_list(args):
 
     print('Contents of directory {} are:'.format(args.dir))
     print(listing)
+
+def cmd_ilist(args):
+    # Stub commands:
+    # ilist
+
+    # Send the list command
+    cmd = b'ilist ' + args.dir.encode() + b'\r\n'
+    writePort(cmd)
+    waitFor(b'~~recvd:\r\n')
+    verifyResponse()
+
+    dataRaw = b''
+    while True:
+        # Send readbuf command
+        cmd = b'readbuf' + b'\r\n'
+        writePort(cmd)
+        waitFor(b'~~recvd:\r\n')
+
+        # Process response
+        respRaw = readPort()
+        if respRaw == b'~~error:no data\r\n': pcLog.debug('No data, breaking loop'); break
+        else: dataRaw += respRaw.strip()
+
+        respRaw = readPort()
+        if respRaw != b'~~complete:\r\n':
+            devLog.error('Unexpected response: {}'.format(respRaw)); exit(1)
+
+    # Decode data
+    data = b''
+    while len(dataRaw):
+        data += int('0x' + dataRaw[0:2].decode(), base=16).to_bytes(1, 'big')
+        dataRaw = dataRaw[2:]
+    
+    listing = data.decode()
+
+    print('Contents of directory {} are:'.format(args.dir))
+    print(listing)
+
+def cmd_mkdir(args):
+    # Stub commands:
+    # mkdir
+
+    # Send the mkdir command
+    cmd = b'mkdir ' + args.path.encode() + b'\r\n'
+    writePort(cmd)
+    waitFor(b'~~recvd:\r\n')
+    verifyResponse()
+
+def cmd_rmdir(args):
+    # Stub commands:
+    # mkdir
+
+    # Send the rmdir command
+    cmd = b'rmdir ' + args.path.encode() + b'\r\n'
+    writePort(cmd)
+    waitFor(b'~~recvd:\r\n')
+    verifyResponse()
 
 
 # Main section
@@ -293,6 +340,30 @@ if __name__ == '__main__':
     listParser.add_argument(
         'dir',
         help='Directory to list',
+        type=str
+    )
+
+    listParser = subParsers.add_parser('ilist', help='List a directory on a device')
+    listParser.set_defaults(function=cmd_ilist)
+    listParser.add_argument(
+        'dir',
+        help='Directory to list',
+        type=str
+    )
+
+    mkdirParser = subParsers.add_parser('mkdir', help='Make a directory on a device')
+    mkdirParser.set_defaults(function=cmd_mkdir)
+    mkdirParser.add_argument(
+        'path',
+        help='Path at which to create a directory',
+        type=str
+    )
+
+    rmdirParser = subParsers.add_parser('rmdir', help='Remove a directory on a device')
+    rmdirParser.set_defaults(function=cmd_rmdir)
+    rmdirParser.add_argument(
+        'path',
+        help='Path at which to create a directory',
         type=str
     )
 

@@ -15,21 +15,62 @@ while runFlag:
         if len(params) < 1:
             print('~~error:missing params'); continue
         try: buffer = '\n'.join(os.listdir(params[0])).encode()
-        except: print('~~error:bad path'); continue
+        except Exception as E: print('~~error:{}'.format(repr(E))); continue
+
+        print('~~complete:')
+
+    elif cmd == 'ilist':
+        if len(params) < 1:
+            print('~~error:missing params'); continue
+        try: listing = os.ilistdir(params[0])
+        except Exception as E: print('~~error:{}'.format(repr(E))); continue
+
+        entries = []
+        # No MicroPython device will likely ever be able to surpass a few GB files, but just to be safe...
+        suffixes = ('B', 'kB', 'MB', 'GB', 'TB', 'PB')
+        sizeDiv = 1024
+        itemNameLen = 0
+        for entry in listing:
+            if entry[1] == 0x8000: itemType = 'f'
+            elif entry[1] == 0x4000: itemType = 'd'
+            else: itemType = '?'
+
+            itemName = entry[0]
+            itemNameLen = max(itemNameLen, len(itemName))
+
+            if len(entry) >= 4 and itemType == 'f':
+                itemSize = entry[3]
+                s = 0
+                while itemSize >= sizeDiv:
+                    itemSize //= sizeDiv
+                    s += 1
+                itemSize = str(itemSize) + suffixes[s]
+
+            else:
+                itemSize = '---'
+
+            entries.append((itemType, itemName, itemSize))
+
+        for e, entry in enumerate(entries):
+            itemType, itemName, itemSize = entry
+            entries[e] = '{} : {}{} : {}'.format(itemType, itemName, ' ' * (itemNameLen - len(itemName)), itemSize)
+
+        buffer += '\n'.join(entries).encode()
+
         print('~~complete:')
 
     elif cmd == 'read':
         if len(params) < 1:
             print('~~error:missing params'); continue
         try: file = open(params[0], 'rb'); buffer = file.read(); file.close()
-        except: print('~~error:bad path'); continue
+        except Exception as E: print('~~error:{}'.format(repr(E))); continue
         print('~~complete:')
 
     elif cmd == 'write':
         if len(params) < 1:
             print('~~error:missing params'); continue
         try: file = open(params[0], 'wb'); null = file.write(buffer); file.close(); buffer = b''
-        except: print('~~error:bad path'); continue
+        except Exception as E: print('~~error:{}'.format(repr(E))); continue
         print('~~complete:')
 
     elif cmd == 'readbuf':
@@ -65,6 +106,20 @@ while runFlag:
     elif cmd == 'reboot':
         print('~~complete:')
         machine.reset()
+
+    elif cmd == 'mkdir':
+        if len(params) < 1:
+            print('~~error:missing params'); continue
+        try: os.mkdir(params[0])
+        except Exception as E: print('~~error:{}'.format(repr(E))); continue
+        print('~~complete:')
+
+    elif cmd == 'rmdir':
+        if len(params) < 1:
+            print('~~error:missing params'); continue
+        try: os.rmdir(params[0])
+        except Exception as E: print('~~error:{}'.format(repr(E))); continue
+        print('~~complete:')
 
     else:
         print('~~error:bad command')
