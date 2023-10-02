@@ -1,7 +1,7 @@
-import argparse, logging, os, serial, time
+import argparse, logging, os, serial, sys, time
 
 
-_version = '3.1.0'
+_version = '3.2.0.dev'
 bufferSize = 1024   # Buffer size for serial data
 batchSize = 1024    # Batch size for command data
 debug = True
@@ -54,19 +54,49 @@ def writePort(data):
         port.write(remaining)
         port.flush()
 
-def waitFor(line, shush=False):
+def waitFor(line, shush=False, dumpOnTraceback=True):
     pcLog.info('Waiting for {}'.format(line))
     devOutput = b''
+    tracebackSequence = b'Traceback (most recent call last):\r\n'
+    tracebackDoneSequence = b'>>> '
     while devOutput != line:
         devOutput = readPort(shush=shush)
-    pcLog.info('Done waiting')
+        if dumpOnTraceback and devOutput == tracebackSequence:
+            break
+    else:   # If loop didn't break, no traceback was caught
+        pcLog.info('Done waiting')
+        return
+    
+    devLog.error('Device error')
+    traceback = devOutput
+    for i in range(10):
+        if devOutput == tracebackDoneSequence: break
+        devOutput = readPort(shush=shush)
+        traceback = traceback + devOutput
+    devLog.error('Device traceback:\n{}'.format(traceback.decode('utf-8', errors='replace')))
+    sys.exit(1)
+    
 
 def verifyResponse():
     respRaw = readPort().strip()
     resp = respRaw.split(b':')
-    if resp[0] == b'~~error': devLog.error(resp[1]); exit(1)
-    elif resp[0] == b'~~complete': pcLog.debug('Response ok')
-    else: pcLog.error('Unexpected response: {}'.format(respRaw)); exit(1)
+    if resp[0] == b'~~error':
+        devLog.error(resp[1]); sys.exit(1)
+
+    elif resp[0] == b'~~complete':
+        pcLog.debug('Response ok')
+    else:
+        pcLog.error('Unexpected response: {}'.format(respRaw))
+
+        time.sleep(0.1) # Give the device 100ms to get the rest of the response out
+        badResp = b''
+        while port.in_waiting > 0:
+            badResp = badResp + port.readline()
+            time.sleep(0.05)    # Continue waiting each batch for 50ms to get any that's left.
+
+        pcLog.error(badResp)
+    
+        sys.exit(1)
 
 
 # Command implementation
@@ -96,7 +126,7 @@ def _readFile(file):
 
         respRaw = readPort()
         if respRaw != b'~~complete:\r\n':
-            devLog.error('Unexpected response: {}'.format(respRaw)); exit(1)
+            devLog.error('Unexpected response: {}'.format(respRaw)); sys.exit(1)
 
     # Decode data
     data = b''
@@ -113,15 +143,15 @@ def cmd_init(args):
     print('Initializing device')
     writePort(b'\x03')      # Ctrl+C
     waitFor(b'>>> ')
-    writePort(b'\x05')      # Ctrl+E?
+    writePort(b'\x05')      # Ctrl+E
     writePort(stub)    
-    writePort(b'\x04')      # Ctrl+D?
+    writePort(b'\x04')      # Ctrl+D
+    waitFor(b'>>> ')
     pcLog.info('Sent stub')
-    readPort()      # Read from the device so that errors with stub loading don't get lost in the next `waitFor` call
     
     cmd = ('batch {}\r\n'.format(batchSize)).encode()
     writePort(cmd)
-    waitFor(b'~~recvd:\r\n', shush=True)
+    waitFor(b'~~recvd:\r\n')
     verifyResponse()
 
 def cmd_cd(args):
@@ -158,7 +188,7 @@ def cmd_pwd(args):
 
         respRaw = readPort()
         if respRaw != b'~~complete:\r\n':
-            devLog.error('Unexpected response: {}'.format(respRaw)); exit(1)
+            devLog.error('Unexpected response: {}'.format(respRaw)); sys.exit(1)
 
     # Decode data
     data = b''
@@ -192,7 +222,7 @@ def cmd_list(args):
 
         respRaw = readPort()
         if respRaw != b'~~complete:\r\n':
-            devLog.error('Unexpected response: {}'.format(respRaw)); exit(1)
+            devLog.error('Unexpected response: {}'.format(respRaw)); sys.exit(1)
 
     # Decode data
     data = b''
@@ -229,7 +259,7 @@ def cmd_ilist(args):
 
         respRaw = readPort()
         if respRaw != b'~~complete:\r\n':
-            devLog.error('Unexpected response: {}'.format(respRaw)); exit(1)
+            devLog.error('Unexpected response: {}'.format(respRaw)); sys.exit(1)
 
     # Decode data
     data = b''

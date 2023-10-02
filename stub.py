@@ -153,4 +153,3 @@ while runFlag:
 
     else:
         print('~~error:bad command')
-

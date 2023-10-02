@@ -16,7 +16,7 @@ If the device does not seem to be communicating properly, check its documentatio
 
 ## Building
 
-Compiling requires the Python packages `nuitka` and `pySerial`. The folders `uPyFile.build` and `uPyFile.dist` will be created (or `install.build` and `install.dist` if compiling the installer). They can safely be ignored or deleted. Compiling the installer is not necessary unless it has been modified.
+Compiling requires the Python packages `nuitka` and `pySerial`. The folders `uPyFile.build` and `uPyFile.dist` will be created. They can safely be ignored or deleted.
 
 ### Linux
 
