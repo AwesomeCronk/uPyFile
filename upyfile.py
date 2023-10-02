@@ -1,7 +1,7 @@
 import argparse, logging, os, serial, sys, time
 
 
-_version = '3.2.0'
+_version = '3.2.1'
 bufferSize = 1024   # Buffer size for serial data
 batchSize = 1024    # Batch size for command data
 debug = True
@@ -146,7 +146,7 @@ def cmd_init(args):
     writePort(b'\x05')      # Ctrl+E
     writePort(stub)    
     writePort(b'\x04')      # Ctrl+D
-    waitFor(b'>>> ')
+    waitFor(b'ready~')
     pcLog.info('Sent stub')
     
     cmd = ('batch {}\r\n'.format(batchSize)).encode()
