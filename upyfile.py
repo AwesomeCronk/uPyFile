@@ -1,7 +1,7 @@
 import argparse, logging, os, serial, sys, time
 
 
-_version = '3.2.0.dev'
+_version = '3.2.0'
 bufferSize = 1024   # Buffer size for serial data
 batchSize = 1024    # Batch size for command data
 debug = True
