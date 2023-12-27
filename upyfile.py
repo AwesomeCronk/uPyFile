@@ -1,16 +1,17 @@
 import argparse, logging, os, serial, sys, time
 
 
-_version = '3.2.1'
+_version = '3.3.0.dev'
 bufferSize = 1024   # Buffer size for serial data
 batchSize = 1024    # Batch size for command data
 debug = True
 verbose = True
 portOpen = False
+flowControl = True  # Some devices' USB/serial interfaces don't implement flow control
+flowDelay = -1.0
 pcLog = logging.getLogger('PC')
 devLog = logging.getLogger('DEV')
 port = None
-
 
 
 # Serial port management
@@ -49,11 +50,15 @@ def writePort(data):
     while len(remaining) > bufferSize:
         port.write(remaining[0:bufferSize])
         remaining = remaining[bufferSize:]
-        port.flush()
+        if flowControl: port.flush()
+        else: time.sleep(flowDelay)
     if len(remaining):
         port.write(remaining)
-        port.flush()
+        if flowControl: port.flush()
+        else: time.sleep(flowDelay)
 
+
+# Communication management
 def waitFor(line, shush=False, dumpOnTraceback=True):
     pcLog.info('Waiting for {}'.format(line))
     devOutput = b''
@@ -75,7 +80,6 @@ def waitFor(line, shush=False, dumpOnTraceback=True):
         traceback = traceback + devOutput
     devLog.error('Device traceback:\n{}'.format(traceback.decode('utf-8', errors='replace')))
     sys.exit(1)
-    
 
 def verifyResponse():
     respRaw = readPort().strip()
@@ -376,6 +380,13 @@ if __name__ == '__main__':
         default=0.2
     )
     rootParser.add_argument(
+        '-f',
+        '--flow-delay',
+        help='Flow control delay (in seconds) - omit to use hardware flow control (default)',
+        type=float,
+        default=None
+    )
+    rootParser.add_argument(
         '-B',
         '--buffer',
         help='Buffer size',
@@ -498,6 +509,14 @@ if __name__ == '__main__':
 
     if args.verbose: logging.basicConfig(level=logging.DEBUG)
     else: logging.basicConfig(level=logging.WARNING)
+
+    if args.flow_delay is None:
+        flowControl = True
+        pcLog.debug('Using hardware flow control')
+    else:
+        flowControl = False
+        flowDelay = args.flow_delay
+        pcLog.debug('Using constant delay flow control ({}s)'.format(flowDelay))
 
     bufferSize = args.buffer
 
